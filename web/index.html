@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,28 +9,42 @@
 <body>
     <div class="container">
         <header>
-            <h1>Token Dashboard</h1>
-            <p class="subtitle">DSH Token 用量监控</p>
+            <div class="header-row">
+                <div class="header-title">
+                    <h1>Token Dashboard</h1>
+                    <p class="subtitle">DSH Token 用量监控</p>
+                </div>
+                <div class="header-actions">
+                    <span class="refresh-indicator" id="refresh-indicator" title="下次刷新">
+                        <span class="refresh-dot"></span>
+                        <span class="refresh-count" id="refresh-count">30</span>s
+                    </span>
+                    <button class="theme-toggle" id="theme-toggle" title="切换主题" aria-label="切换主题">
+                        <span class="theme-icon-light">&#9728;</span>
+                        <span class="theme-icon-dark">&#9790;</span>
+                    </button>
+                </div>
+            </div>
         </header>
 
         <div class="summary-cards" id="summary-cards">
-            <div class="card">
+            <div class="card skeleton" id="card-sessions-container">
                 <div class="card-label">Sessions</div>
                 <div class="card-value" id="card-sessions">-</div>
             </div>
-            <div class="card">
+            <div class="card skeleton" id="card-tokens-container">
                 <div class="card-label">Total Tokens</div>
                 <div class="card-value" id="card-tokens">-</div>
             </div>
-            <div class="card">
+            <div class="card skeleton" id="card-input-container">
                 <div class="card-label">Input Tokens</div>
                 <div class="card-value" id="card-input">-</div>
             </div>
-            <div class="card">
+            <div class="card skeleton" id="card-output-container">
                 <div class="card-label">Output Tokens</div>
                 <div class="card-value" id="card-output">-</div>
             </div>
-            <div class="card highlight">
+            <div class="card highlight skeleton" id="card-cost-container">
                 <div class="card-label">Total Cost</div>
                 <div class="card-value" id="card-cost">-</div>
             </div>
@@ -39,27 +53,33 @@
         <div class="grid">
             <div class="panel">
                 <h2>By Model</h2>
-                <div id="model-chart" class="chart"></div>
+                <div id="model-chart" class="chart">
+                    <div class="loading-skeleton-chart"></div>
+                </div>
             </div>
             <div class="panel">
                 <h2>Daily Usage</h2>
-                <div id="daily-chart" class="chart"></div>
+                <div id="daily-chart" class="chart">
+                    <div class="loading-skeleton-chart"></div>
+                </div>
             </div>
         </div>
 
         <div class="panel">
             <h2>Top Sessions</h2>
-            <table id="sessions-table">
-                <thead>
-                    <tr>
-                        <th>Session ID</th>
-                        <th>Calls</th>
-                        <th>Tokens</th>
-                        <th>Cost</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+            <div class="table-wrap">
+                <table id="sessions-table">
+                    <thead>
+                        <tr>
+                            <th>Session ID</th>
+                            <th>Calls</th>
+                            <th>Tokens</th>
+                            <th>Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
 
         <footer>

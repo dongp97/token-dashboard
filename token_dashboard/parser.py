@@ -18,33 +18,101 @@ def find_ledger() -> Path | None:
     return None
 
 
+def find_all_ledgers() -> list[Path]:
+    """Find all ledger.json files under known profile directories.
+
+    Searches ~/.dsh/profiles/*/plugins/*/ledger.json and ~/.dsh/*/ledger.json
+    to support multi-profile or multi-plugin installations.
+    """
+    ledgers: list[Path] = []
+    dsh_dir = Path.home() / ".dsh"
+    if not dsh_dir.exists():
+        return ledgers
+
+    # Profile-scoped plugin ledgers: ~/.dsh/profiles/<profile>/plugins/*/ledger.json
+    profiles_dir = dsh_dir / "profiles"
+    if profiles_dir.exists():
+        for plugin_dir in profiles_dir.glob("plugins/*/"):
+            candidate = plugin_dir / "ledger.json"
+            if candidate.exists():
+                ledgers.append(candidate)
+
+    # Top-level cost-meter variants: ~/.dsh/*/ledger.json
+    for candidate in dsh_dir.glob("*/ledger.json"):
+        if candidate not in ledgers:
+            ledgers.append(candidate)
+
+    # Deduplicate via resolved real paths
+    seen: set[str] = set()
+    unique: list[Path] = []
+    for p in ledgers:
+        resolved = str(p.resolve())
+        if resolved not in seen:
+            seen.add(resolved)
+            unique.append(p)
+    return unique
+
+
 def parse_ledger(path: Path | None = None) -> list[dict[str, Any]]:
-    """Parse ledger.json and return list of session records."""
+    """Parse ledger.json and return list of session records.
+
+    Handles multiple nested formats:
+      - Plain list of records
+      - {"sessions": [...]} or {"entries": [...]}
+      - {"data": [...]} or {"data": {"sessions": [...]}}
+      - {"ledger": {"entries": [...]}}
+      - Dict-of-dicts: {"session_id_1": {...}, "session_id_2": {...}}
+
+    JSON parse errors are caught and return an empty list.
+    """
     if path is None:
         path = find_ledger()
     if path is None or not path.exists():
         return []
 
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
 
-    records = []
+    return _extract_records(data)
 
-    # dsh-cost-meter ledger format varies; handle common structures
+
+def _extract_records(data: Any) -> list[dict[str, Any]]:
+    """Recursively extract normalized records from various nested structures."""
+    records: list[dict[str, Any]] = []
+
+    if data is None:
+        return records
+
     if isinstance(data, list):
-        for item in records_from_list(data):
-            records.append(item)
-    elif isinstance(data, dict):
-        # Could be {sessions: {...}} or {entries: [...]} or flat
-        if "sessions" in data:
-            for item in records_from_list(data["sessions"]):
-                records.append(item)
-        elif "entries" in data:
-            for item in records_from_list(data["entries"]):
-                records.append(item)
-        else:
-            # Try treating the whole dict as a single session map
-            records.append(normalize_record(data))
+        for item in data:
+            records.extend(_extract_records(item))
+        return records
+
+    if isinstance(data, dict):
+        # Check for known list-wrapped keys at this level
+        list_keys = ("sessions", "entries", "records", "data", "items", "ledger", "results")
+        for key in list_keys:
+            if key in data and data[key] is not None:
+                records.extend(_extract_records(data[key]))
+                return records
+
+        # Dict-of-dicts: keys are session IDs, values are record dicts
+        # Heuristic: every value is a dict → treat as dict-of-dicts
+        if data and all(isinstance(v, dict) for v in data.values()):
+            for key, value in data.items():
+                rec = normalize_record(value)
+                # Use the dict key as session_id if record lacks one
+                if rec.get("session_id") == "unknown":
+                    rec["session_id"] = str(key)
+                records.append(rec)
+            return records
+
+        # Single record dict
+        records.append(normalize_record(data))
+        return records
 
     return records
 

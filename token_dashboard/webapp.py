@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, send_from_directory
 
+from .demo import generate_demo_data
 from .parser import find_ledger, parse_ledger
 from .stats import compute_stats
 
@@ -25,7 +26,7 @@ def create_app() -> Flask:
         if ledger_path and ledger_path.exists():
             records = parse_ledger(ledger_path)
         else:
-            records = _demo_data()
+            records = generate_demo_data()
         stats = compute_stats(records)
         return jsonify(stats)
 
@@ -42,28 +43,6 @@ def run_web(port: int = 8080):
     print(f"Token Dashboard running at http://localhost:{port}")
     print("Press Ctrl+C to stop.")
     app.run(host="0.0.0.0", port=port, debug=False)
-
-
-def _demo_data() -> list[dict]:
-    """Generate demo data."""
-    import datetime
-    records = []
-    base = datetime.datetime.now()
-    models = ["LongCat-2.0", "deepseek-chat", "gpt-4o", "claude-3.5-sonnet"]
-    for i in range(50):
-        day_offset = i // 5
-        ts = (base - datetime.timedelta(days=day_offset)).isoformat()
-        records.append({
-            "session_id": f"session-{i:04d}-demo",
-            "model": models[i % len(models)],
-            "input_tokens": 1000 + i * 200,
-            "output_tokens": 500 + i * 100,
-            "total_tokens": 1500 + i * 300,
-            "cost": round(0.01 + i * 0.005, 4),
-            "timestamp": ts,
-            "provider": "demo",
-        })
-    return records
 
 
 if __name__ == "__main__":
